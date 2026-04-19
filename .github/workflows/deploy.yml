@@ -1,12 +1,12 @@
-name: Release Node.js app
+name: Release and Deploy App
 
 on:
   push:
     branches:
-      - main  
+      - main
 
 jobs:
-  publish-docker-hub:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -23,4 +23,22 @@ jobs:
         with:
           context: .
           push: true
-          tags: nastya83/express-app:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/expressv2:latest
+          
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd /home/${{ secrets.USERNAME }}/app
+            docker compose pull
+            docker compose up -d
+            docker image prune -f
